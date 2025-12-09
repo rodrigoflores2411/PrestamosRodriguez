@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PagoService {
@@ -19,5 +20,9 @@ public class PagoService {
 
     public List<Pago> obtenerPagos() {
         return pagoRepository.findAll();
+    }
+
+    public Optional<Pago> obtenerPagoPorId(Long id) {
+        return pagoRepository.findById(id);
     }
 }

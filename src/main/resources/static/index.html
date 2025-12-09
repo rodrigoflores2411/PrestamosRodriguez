@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagar Deuda</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f5f5f5; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h1 { color: #333; text-align: center; }
+        .summary { margin-bottom: 2rem; }
+        .summary-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+        .summary-item span { color: #555; }
+        .total { font-weight: bold; font-size: 1.2rem; color: #000; }
+        .payment-form { display: flex; flex-direction: column; }
+        .pay-button { background-color: #0070ba; color: white; border: none; padding: 1rem; border-radius: 5px; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none; }
+        .pay-button:hover { background-color: #005ea6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Resumen de Deuda</h1>
+    
+    <div class="summary">
+        <div class="summary-item">
+            <span>Cuota del Mes:</span>
+            <span>$100.00</span>
+        </div>
+        <div class="summary-item">
+            <span>Mora por retraso:</span>
+            <span>$8.33</span>
+        </div>
+        <div class="summary-item total">
+            <span>Total a Pagar:</span>
+            <span>$108.33</span>
+        </div>
+    </div>
+
+    <!-- Formulario que envía la petición a nuestro backend para crear el pago en PayPal -->
+    <form class="payment-form" method="post" action="/paypal/create-payment">
+        <!-- Estos valores serían dinámicos en una aplicación real -->
+        <input type="hidden" name="method" value="paypal">
+        <input type="hidden" name="amount" value="108.33">
+        <input type="hidden" name="currency" value="USD">
+        <input type="hidden" name="description" value="Pago de cuota de préstamo">
+        
+        <button type="submit" class="pay-button">Pagar con PayPal</button>
+    </form>
+</div>
+
+</body>
+</html>
