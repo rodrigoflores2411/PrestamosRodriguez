@@ -10,8 +10,8 @@ import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.property.TextAlignment;
-import com.itextpdf.layout.property.UnitValue;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -31,7 +31,7 @@ public class PdfService {
             Document document = new Document(pdf, PageSize.A4);
             document.setMargins(20, 20, 20, 20);
 
-            // --- ENCABEZADO ---
+            // --- CABECERA ---
             Table header = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
             header.setWidth(UnitValue.createPercentValue(100));
 
@@ -44,13 +44,13 @@ public class PdfService {
             header.addCell(companyCell);
 
             // Factura Box
-            Table invoiceBox = new Table(UnitValue.createPercentArray(1));
+            Table invoiceBox = new Table(UnitValue.createPercentArray(new float[]{1}));
             invoiceBox.addCell(createCell("FACTURA", TextAlignment.CENTER).setFontSize(14).setBold());
-            invoiceBox.addCell(createCell("001 - Nº " + pago.getIdPago(), TextAlignment.CENTER));
+            invoiceBox.addCell(createCell("001 - N° " + pago.getId(), TextAlignment.CENTER));
             Cell invoiceCell = new Cell().add(invoiceBox);
             invoiceCell.setBorder(Border.NO_BORDER);
             header.addCell(invoiceCell);
-            
+
             document.add(header);
             document.add(new Paragraph("\n")); // Espacio
 
@@ -60,11 +60,11 @@ public class PdfService {
             clientDetails.setWidth(UnitValue.createPercentValue(100));
             clientDetails.addCell(createCell("Señor(es):", TextAlignment.LEFT).setBold());
             // Asumiendo que podemos acceder al nombre del cliente
-            String clientName = (pago.getPrestamo() != null && pago.getPrestamo().getCliente() != null) ? pago.getPrestamo().getCliente().getNombre() : "Cliente Genérico";
+            String clientName = (pago.getPrestamo() != null && pago.getPrestamo().getCliente() != null) ? pago.getPrestamo().getCliente().getNombre() : "Cliente no especificado";
             clientDetails.addCell(createCell(clientName, TextAlignment.LEFT));
             clientDetails.addCell(createCell("Fecha de emisión:", TextAlignment.LEFT).setBold());
             clientDetails.addCell(createCell(sdf.format(pago.getFecha()), TextAlignment.LEFT));
-            document.add(clientDetails);
+            document.add(clientDetails.setBorder(Border.NO_BORDER)); // Se aplica el borde a la tabla entera
             document.add(new Paragraph("\n"));
 
             // --- TABLA DE ITEMS ---
@@ -83,8 +83,8 @@ public class PdfService {
             items.addCell(createCell("1", TextAlignment.CENTER));
             items.addCell(createCell("Pago de cuota de préstamo", TextAlignment.LEFT));
             items.addCell(createCell("S/ " + df.format(total), TextAlignment.RIGHT));
-
             document.add(items);
+            document.add(new Paragraph("\n"));
 
             // --- TOTALES ---
             Table totals = new Table(UnitValue.createPercentArray(new float[]{80, 20}));
@@ -94,15 +94,17 @@ public class PdfService {
             totals.addCell(createCell("I.G.V. (18%):", TextAlignment.RIGHT).setBold());
             totals.addCell(createCell("S/ " + df.format(igv), TextAlignment.RIGHT));
             totals.addCell(createCell("TOTAL:", TextAlignment.RIGHT).setBold().setFontSize(14));
-            totals.addCell(createCell("S/ " + df.format(total), TextAlignment.RIGHT).setFontSize(14));
-            document.add(totals);
+            totals.addCell(createCell("S/ " + df.format(total), TextAlignment.RIGHT).setBold().setFontSize(14));
+            document.add(totals.setBorder(Border.NO_BORDER));
+            document.add(new Paragraph("\n"));
 
             // --- PIE DE PÁGINA ---
             document.add(new Paragraph("\n\n"));
-            Paragraph footer = new Paragraph("CANCELADO").setBold().setFontSize(18).setTextAlignment(TextAlignment.CENTER).setFontColor(ColorConstants.BLUE);
+            Paragraph footer = new Paragraph("CANCELADO").setBold().setFontSize(18).setTextAlignment(TextAlignment.CENTER).setFontColor(ColorConstants.GREEN);
             document.add(footer);
 
             document.close();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -110,7 +112,7 @@ public class PdfService {
         return new ByteArrayInputStream(out.toByteArray());
     }
 
-    // Helper para crear celdas sin borde
+    // Helper para crear celdas sin borde y con padding
     private Cell createCell(String content, TextAlignment alignment) {
         Cell cell = new Cell().add(new Paragraph(content));
         cell.setPadding(5);

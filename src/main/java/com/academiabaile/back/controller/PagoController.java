@@ -44,10 +44,10 @@ public class PagoController {
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Disposition", "inline; filename=comprobante-" + id + ".pdf");
 
+            // La línea .contentType() se ha eliminado porque ya se especifica en @GetMapping
             return ResponseEntity
                     .ok()
                     .headers(headers)
-                    .contentType(MediaType.APPLICATION_PDF)
                     .body(new InputStreamResource(bis));
         } else {
             return ResponseEntity.notFound().build();
