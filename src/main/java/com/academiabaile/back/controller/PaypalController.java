@@ -1,25 +1,29 @@
 package com.academiabaile.back.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import com.academiabaile.back.service.PaypalService;
 import com.paypal.api.payments.Links;
 import com.paypal.api.payments.Payment;
 import com.paypal.base.rest.PayPalRESTException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 
-@RestController
+@Controller
 @RequestMapping("/paypal")
 public class PaypalController {
 
     @Autowired
     private PaypalService paypalService;
 
-    public static final String SUCCESS_URL = "pay/success";
-    public static final String CANCEL_URL = "pay/cancel";
+    public static final String SUCCESS_URL = "success";
+    public static final String CANCEL_URL = "cancel";
 
-    @PostMapping("/create-payment")
+    @PostMapping("/pay")
     public String createPayment(
-            @RequestParam("method") String method,
             @RequestParam("amount") String amount,
             @RequestParam("currency") String currency,
             @RequestParam("description") String description) {
@@ -27,15 +31,15 @@ public class PaypalController {
             Payment payment = paypalService.createPayment(
                     Double.valueOf(amount),
                     currency,
-                    method,
-                    "sale",
+                    "paypal", // Corregido: Usar el valor de texto "paypal"
+                    "sale",   // Corregido: Usar el valor de texto "sale"
                     description,
-                    "http://localhost:8080/" + CANCEL_URL,
-                    "http://localhost:8080/" + SUCCESS_URL);
+                    "http://localhost:8080/paypal/" + CANCEL_URL,
+                    "http://localhost:8080/paypal/" + SUCCESS_URL);
 
-            for (Links link : payment.getLinks()) {
-                if (link.getRel().equals("approval_url")) {
-                    return "redirect:" + link.getHref();
+            for (Links links : payment.getLinks()) {
+                if (links.getRel().equals("approval_url")) {
+                    return "redirect:" + links.getHref();
                 }
             }
         } catch (PayPalRESTException e) {
@@ -57,7 +61,7 @@ public class PaypalController {
                 return "payment-success";
             }
         } catch (PayPalRESTException e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/";
     }
