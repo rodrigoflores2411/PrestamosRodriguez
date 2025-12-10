@@ -1,9 +1,10 @@
 package com.academiabaile.back.service;
 
-import com.academiabaile.back.model.Pago;
-import com.academiabaile.back.model.Prestamo;
+import com.academiabaile.back.entidades.Pago;
+import com.academiabaile.back.entidades.Prestamo;
 import com.academiabaile.back.repository.PrestamoRepository;
 import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.font.StandardFonts;
 import com.itextpdf.kernel.geom.PageSize;
@@ -40,24 +41,20 @@ public class PdfService {
             Document document = new Document(pdf, PageSize.A4);
             document.setMargins(30, 30, 30, 30);
 
-            // --- CABECERA ---
             Table header = new Table(UnitValue.createPercentArray(new float[]{60, 40}));
             header.setWidth(UnitValue.createPercentValue(100));
 
-            // Datos de la empresa
             Cell companyCell = new Cell();
             companyCell.add(new Paragraph("Prestamos Rodriguez").setBold().setFontSize(24));
             companyCell.add(new Paragraph("Av. Siempre Viva 123 - Springfield"));
             companyCell.setBorder(Border.NO_BORDER);
             header.addCell(companyCell);
 
-            // Recuadro normativo
             header.addCell(createInvoiceBox("FACTURA", pago.getId()));
 
             document.add(header);
             document.add(new Paragraph("\n"));
 
-            // --- DATOS DEL CLIENTE ---
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             Table clientDetails = new Table(UnitValue.createPercentArray(new float[]{25, 75}));
             clientDetails.setWidth(UnitValue.createPercentValue(100));
@@ -69,7 +66,6 @@ public class PdfService {
             document.add(clientDetails);
             document.add(new Paragraph("\n"));
 
-            // --- TABLA DE ITEMS ---
             Table items = new Table(UnitValue.createPercentArray(new float[]{15, 60, 25}));
             items.setWidth(UnitValue.createPercentValue(100));
             items.addHeaderCell(createHeaderCell("CANTIDAD"));
@@ -83,7 +79,6 @@ public class PdfService {
             document.add(items);
             document.add(new Paragraph("\n"));
 
-            // --- TOTALES ---
             Table totals = new Table(UnitValue.createPercentArray(new float[]{80, 20}));
             totals.setWidth(UnitValue.createPercentValue(100));
             totals.addCell(createCell("TOTAL:", TextAlignment.RIGHT).setBold().setFontSize(14));
@@ -107,12 +102,10 @@ public class PdfService {
             Document document = new Document(pdf, PageSize.A4);
             document.setMargins(30, 30, 30, 30);
 
-            // --- CABECERA ---
             Prestamo prestamo = prestamoRepository.findById(prestamoId).orElseThrow(() -> new IOException("Préstamo no encontrado"));
             Table header = new Table(UnitValue.createPercentArray(new float[]{60, 40}));
             header.setWidth(UnitValue.createPercentValue(100));
 
-            // Datos del cliente
             Cell clientCell = new Cell();
             clientCell.add(new Paragraph("Cliente:").setBold());
             clientCell.add(new Paragraph(prestamo.getCliente().getNombre()));
@@ -120,12 +113,10 @@ public class PdfService {
             clientCell.setBorder(Border.NO_BORDER);
             header.addCell(clientCell);
 
-            // Recuadro normativo
             header.addCell(createInvoiceBox("ESTADO DE CUENTA", prestamoId));
             document.add(header);
             document.add(new Paragraph("\n"));
 
-            // --- RESUMEN DEL PRÉSTAMO ---
             document.add(new Paragraph("Resumen del Préstamo").setBold().setFontSize(14));
             Table details = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
             details.setWidth(UnitValue.createPercentValue(100));
@@ -140,7 +131,6 @@ public class PdfService {
             document.add(details);
             document.add(new Paragraph("\n"));
 
-            // --- DETALLE DE LA DEUDA ---
             document.add(new Paragraph("Detalle de Deuda al " + datosDeuda.get("fechaCalculo")).setBold().setFontSize(14));
             Table debtTable = new Table(UnitValue.createPercentArray(new float[]{70, 30}));
             debtTable.setWidth(UnitValue.createPercentValue(100));
@@ -154,7 +144,6 @@ public class PdfService {
             debtTable.addCell(createCell("USD " + df.format(datosDeuda.get("interesPorMoraAcumulado")), TextAlignment.RIGHT).setFontColor(ColorConstants.RED));
             document.add(debtTable);
 
-            // --- TOTAL A PAGAR ---
             Table totalTable = new Table(UnitValue.createPercentArray(new float[]{70, 30}));
             totalTable.setWidth(UnitValue.createPercentValue(100));
             totalTable.addCell(createCell("TOTAL DEUDA CALCULADA:", TextAlignment.RIGHT).setBold().setFontSize(16));
@@ -167,26 +156,32 @@ public class PdfService {
         return out.toByteArray();
     }
 
-    /**
-     * Crea el recuadro superior derecho que cumple con la normativa.
-     */
     private Cell createInvoiceBox(String docName, long number) throws IOException {
         Table box = new Table(UnitValue.createPercentArray(new float[]{1}));
         box.setWidth(UnitValue.createPercentValue(100));
         box.setBorder(new SolidBorder(ColorConstants.BLACK, 1));
-        
-        box.addCell(createCell("RUC: " + RUC_EMPRESA, TextAlignment.CENTER).setBold().setFontSize(18).setFont(PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)));
-        box.addCell(createCell(docName, TextAlignment.CENTER).setBold().setFontSize(18).setFont(PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)));
-        
+
+        PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+
+        Paragraph rucParagraph = new Paragraph("RUC: " + RUC_EMPRESA)
+                .setFont(font).setFontSize(18).setTextAlignment(TextAlignment.CENTER);
+        Cell rucCell = new Cell().add(rucParagraph).setBorder(Border.NO_BORDER);
+        box.addCell(rucCell);
+
+        Paragraph docNameParagraph = new Paragraph(docName)
+                .setFont(font).setFontSize(18).setTextAlignment(TextAlignment.CENTER);
+        Cell docNameCell = new Cell().add(docNameParagraph).setBorder(Border.NO_BORDER);
+        box.addCell(docNameCell);
+
         String formattedNumber = String.format("001-%07d", number);
-        box.addCell(createCell(formattedNumber, TextAlignment.CENTER).setBold().setFontSize(14).setFont(PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)));
-        
+        Paragraph numberParagraph = new Paragraph(formattedNumber)
+                .setFont(font).setFontSize(14).setTextAlignment(TextAlignment.CENTER);
+        Cell numberCell = new Cell().add(numberParagraph).setBorder(Border.NO_BORDER);
+        box.addCell(numberCell);
+
         return new Cell().add(box).setBorder(Border.NO_BORDER).setPadding(0);
     }
 
-    /**
-     * Helper para crear celdas de tabla simples y sin bordes.
-     */
     private Cell createCell(String content, TextAlignment alignment) {
         Cell cell = new Cell().add(new Paragraph(content));
         cell.setPadding(5);
@@ -195,9 +190,6 @@ public class PdfService {
         return cell;
     }
 
-    /**
-     * Helper para crear celdas de cabecera para tablas.
-     */
     private Cell createHeaderCell(String content) {
         return createCell(content, TextAlignment.CENTER).setBold().setBackgroundColor(ColorConstants.LIGHT_GRAY);
     }
