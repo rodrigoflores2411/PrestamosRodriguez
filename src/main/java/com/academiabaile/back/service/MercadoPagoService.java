@@ -1,5 +1,6 @@
 package com.academiabaile.back.service;
 
+import com.academiabaile.back.entidades.Cliente;
 import com.academiabaile.back.entidades.Cuota;
 import com.academiabaile.back.exception.ResourceNotFoundException;
 import com.academiabaile.back.repository.CuotaRepository;
@@ -49,7 +50,7 @@ public class MercadoPagoService {
                 .description("Pago de cuota del préstamo")
                 .quantity(1)
                 .currencyId("PEN") // CAMBIADO A PERÚ
-                .unitPrice(BigDecimal.valueOf(cuota.getMonto()))
+                .unitPrice(new BigDecimal(String.valueOf(cuota.getMonto())))
                 .build();
 
         // 4. URLs de retorno
@@ -62,19 +63,27 @@ public class MercadoPagoService {
                 .failure(failureUrl)
                 .pending(pendingUrl)
                 .build();
+                
+        // 5. Información del pagador
+        Cliente cliente = cuota.getPrestamo().getCliente();
+        PreferencePayerRequest payer = PreferencePayerRequest.builder()
+                .name(cliente.getNombre())
+                .surname(cliente.getApellido())
+                .email("test_user_12345678@testuser.com") // Email de prueba requerido por Mercado Pago
+                .build();
 
-        // 5. Construir la preferencia
+        // 6. Construir la preferencia
         PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                 .items(List.of(item))
+                .payer(payer)
                 .backUrls(backUrls)
                 .autoReturn("approved")
                 .metadata(
-                        // GUARDAR ID DE CUOTA EN METADATA
                         java.util.Map.of("cuota_id", cuotaId)
                 )
                 .build();
 
-        // 6. Crear preferencia con el nuevo client()
+        // 7. Crear preferencia con el nuevo client()
         PreferenceClient client = new PreferenceClient();
         return client.create(preferenceRequest);
     }
