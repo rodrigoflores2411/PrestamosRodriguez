@@ -4,17 +4,17 @@ import com.academiabaile.back.entidades.Cuota;
 import com.academiabaile.back.exception.ResourceNotFoundException;
 import com.academiabaile.back.repository.CuotaRepository;
 import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
-// Import corregido para la clase Preference
+import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.preference.Preference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -29,28 +29,30 @@ public class MercadoPagoService {
     @Autowired
     private CuotaRepository cuotaRepository;
 
+    /**
+     * CREA UNA PREFERENCIA DE PAGO PARA UNA CUOTA
+     */
     public Preference crearPreferenciaDePago(Long cuotaId) throws MPException, MPApiException {
-        // 1. Encontrar la cuota
+
+        // 1. Buscar cuota en base de datos
         Cuota cuota = cuotaRepository.findById(cuotaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cuota no encontrada con id: " + cuotaId));
 
-        // 2. Inicializar Mercado Pago SDK
+        // 2. Inicializar el SDK con el token
         MercadoPagoConfig.setAccessToken(accessToken);
 
-        // 3. Crear item de la preferencia
-        PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+        // 3. Crear el item de la preferencia
+        PreferenceItemRequest item = PreferenceItemRequest.builder()
                 .id(String.valueOf(cuota.getId()))
-                .title("Pago de Cuota Nro: " + cuota.getNumeroCuota() + " - Préstamo " + cuota.getPrestamo().getDescripcion())
-                .description("Pago de cuota del préstamo.")
+                .title("Pago de Cuota #" + cuota.getNumeroCuota() +
+                        " - Préstamo: " + cuota.getPrestamo().getDescripcion())
+                .description("Pago de cuota del préstamo")
                 .quantity(1)
-                .currencyId("ARS") // O la moneda que corresponda
-                .unitPrice(new BigDecimal(cuota.getMonto()))
+                .currencyId("PEN") // CAMBIADO A PERÚ
+                .unitPrice(BigDecimal.valueOf(cuota.getMonto()))
                 .build();
 
-        List<PreferenceItemRequest> items = new ArrayList<>();
-        items.add(itemRequest);
-
-        // 4. Configurar URLs de redirección (Callbacks)
+        // 4. URLs de retorno
         String successUrl = baseUrl + "/api/pagos/mercadopago/success?cuota_id=" + cuotaId;
         String failureUrl = baseUrl + "/api/pagos/mercadopago/failure?cuota_id=" + cuotaId;
         String pendingUrl = baseUrl + "/api/pagos/mercadopago/pending?cuota_id=" + cuotaId;
@@ -60,15 +62,60 @@ public class MercadoPagoService {
                 .failure(failureUrl)
                 .pending(pendingUrl)
                 .build();
-        
-        // 5. Crear la preferencia de pago
+
+        // 5. Construir la preferencia
         PreferenceRequest preferenceRequest = PreferenceRequest.builder()
-                .items(items)
+                .items(List.of(item))
                 .backUrls(backUrls)
-                .autoReturn("approved") // Redirección automática solo en caso de pago aprobado
+                .autoReturn("approved")
+                .metadata(
+                        // GUARDAR ID DE CUOTA EN METADATA
+                        java.util.Map.of("cuota_id", cuotaId)
+                )
                 .build();
 
+        // 6. Crear preferencia con el nuevo client()
         PreferenceClient client = new PreferenceClient();
         return client.create(preferenceRequest);
+    }
+
+
+    /**
+     * PROCESA WEBHOOK O NOTIFICACIÓN IPN
+     */
+    public void procesarNotificacion(String paymentId) {
+
+        try {
+            // Cargar token
+            MercadoPagoConfig.setAccessToken(accessToken);
+
+            // Consultar pago
+            PaymentClient paymentClient = new PaymentClient();
+            Payment payment = paymentClient.get(Long.valueOf(paymentId));
+
+            System.out.println("Estado del pago: " + payment.getStatus());
+            System.out.println("Monto pagado: " + payment.getTransactionAmount());
+            System.out.println("Metadata: " + payment.getMetadata());
+
+            // Solo procesamos pagos aprobados
+            if ("approved".equalsIgnoreCase(payment.getStatus())) {
+
+                // Obtener cuota_id desde metadata
+                Long cuotaId = Long.valueOf(payment.getMetadata()
+                        .get("cuota_id").toString());
+
+                Cuota cuota = cuotaRepository.findById(cuotaId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Cuota no encontrada: " + cuotaId));
+
+                cuota.setPagada(true);
+                cuotaRepository.save(cuota);
+
+                System.out.println("✔ Cuota " + cuotaId + " marcada como PAGADA.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("❌ Error procesando notificación de Mercado Pago:");
+            e.printStackTrace();
+        }
     }
 }
