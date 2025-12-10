@@ -1,19 +1,20 @@
+
 package com.academiabaile.back.service;
 
 import com.academiabaile.back.entidades.Cuota;
-import com.academiabaile.back.entidades.Pago;
+import com.academiabaile.back.exception.ResourceNotFoundException;
 import com.academiabaile.back.repository.CuotaRepository;
-import com.academiabaile.back.repository.PagoRepository;
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.preference.*;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Date;
-import java.util.HashMap;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class MercadoPagoService {
@@ -21,103 +22,52 @@ public class MercadoPagoService {
     @Value("${mercadopago.access.token}")
     private String accessToken;
 
-    private final CuotaRepository cuotaRepository;
-    private final PagoRepository pagoRepository;
+    @Value("${server.base-url}")
+    private String baseUrl;
 
-    public MercadoPagoService(CuotaRepository cuotaRepository, PagoRepository pagoRepository) {
-        this.cuotaRepository = cuotaRepository;
-        this.pagoRepository = pagoRepository;
-    }
+    @Autowired
+    private CuotaRepository cuotaRepository;
 
-    public String crearPreferencia(Long cuotaId) {
-        RestTemplate restTemplate = new RestTemplate();
-
+    public Preference crearPreferenciaDePago(Long cuotaId) throws MPException, MPApiException {
+        // 1. Encontrar la cuota
         Cuota cuota = cuotaRepository.findById(cuotaId)
-                .orElseThrow(() -> new RuntimeException("Cuota no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cuota no encontrada con id: " + cuotaId));
 
-        // URL base de redirección (frontend)
-        String baseUrl = "http://localhost:4200/prestamos"; // Cambia esto por la URL de tu frontend
+        // 2. Inicializar Mercado Pago SDK
+        MercadoPagoConfig.setAccessToken(accessToken);
 
-        // Construir URLs con parámetros
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl)
-                .queryParam("prestamoId", cuota.getPrestamo().getId());
+        // 3. Crear item de la preferencia
+        PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+                .id(String.valueOf(cuota.getId()))
+                .title("Pago de Cuota Nro: " + cuota.getNumeroCuota() + " - Préstamo " + cuota.getPrestamo().getDescripcion())
+                .description("Pago de cuota del préstamo.")
+                .quantity(1)
+                .currencyId("ARS") // O la moneda que corresponda
+                .unitPrice(new BigDecimal(cuota.getMonto()))
+                .build();
 
-        String successUrl = builder.cloneBuilder().queryParam("payment_status", "success").build().toUriString();
-        String failureUrl = builder.cloneBuilder().queryParam("payment_status", "failure").build().toUriString();
-        String pendingUrl = builder.cloneBuilder().queryParam("payment_status", "pending").build().toUriString();
+        List<PreferenceItemRequest> items = new ArrayList<>();
+        items.add(itemRequest);
 
-        // Headers con autorización
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        // 4. Configurar URLs de redirección (Callbacks)
+        String successUrl = baseUrl + "/api/pagos/mercadopago/success?cuota_id=" + cuotaId;
+        String failureUrl = baseUrl + "/api/pagos/mercadopago/failure?cuota_id=" + cuotaId;
+        String pendingUrl = baseUrl + "/api/pagos/mercadopago/pending?cuota_id=" + cuotaId;
 
-        // Detalle del producto a pagar
-        Map<String, Object> item = Map.of(
-                "title", "Pago de cuota Nro " + cuota.getNumeroCuota(),
-                "quantity", 1,
-                "currency_id", "PEN",
-                "unit_price", cuota.getMonto()
-        );
+        PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                .success(successUrl)
+                .failure(failureUrl)
+                .pending(pendingUrl)
+                .build();
+        
+        // 5. Crear la preferencia de pago
+        PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                .items(items)
+                .backUrls(backUrls)
+                .autoReturn("approved") // Redirección automática solo en caso de pago aprobado
+                .build();
 
-        // Cuerpo de la preferencia
-        Map<String, Object> body = new HashMap<>();
-        body.put("items", List.of(item));
-        body.put("metadata", Map.of("cuota_id", cuotaId));
-        body.put("notification_url", "https://tu-backend.com/api/mercadopago/webhook"); // Cambia esto por la URL de tu backend
-        body.put("back_urls", Map.of(
-                "success", successUrl,
-                "failure", failureUrl,
-                "pending", pendingUrl
-        ));
-        body.put("auto_return", "approved");
-
-        // Ejecutar la solicitud POST
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://api.mercadopago.com/checkout/preferences",
-                entity,
-                Map.class
-        );
-
-        // Retornar sandbox_init_point para pruebas
-        return response.getBody().get("sandbox_init_point").toString();
-    }
-
-    public boolean procesarNotificacion(String paymentId) {
-        RestTemplate restTemplate = new RestTemplate();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<Map> resp = restTemplate.exchange(
-                "https://api.mercadopago.com/v1/payments/" + paymentId,
-                HttpMethod.GET,
-                entity,
-                Map.class
-        );
-
-        String status = String.valueOf(resp.getBody().get("status"));
-        Map<?, ?> metadata = (Map<?, ?>) resp.getBody().get("metadata");
-        Long cuotaId = ((Number) metadata.get("cuota_id")).longValue();
-
-        if ("approved".equals(status)) {
-            Cuota cuota = cuotaRepository.findById(cuotaId)
-                    .orElseThrow(() -> new RuntimeException("Cuota no encontrada en pago exitoso"));
-
-            if (!cuota.isPagada()) {
-                cuota.setPagada(true);
-                cuotaRepository.save(cuota);
-
-                Pago pago = new Pago();
-                pago.setPrestamo(cuota.getPrestamo());
-                pago.setFecha(new Date());
-                pago.setMonto(cuota.getMonto());
-                pagoRepository.save(pago);
-            }
-            return true;
-        }
-
-        return false;
+        PreferenceClient client = new PreferenceClient();
+        return client.create(preferenceRequest);
     }
 }

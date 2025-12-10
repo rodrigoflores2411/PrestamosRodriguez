@@ -27,41 +27,60 @@ public class PagoService {
     @Autowired
     private PrestamoRepository prestamoRepository;
 
+    /**
+     * Procesa un pago manual subiendo un archivo de comprobante.
+     */
     @Transactional
     public Cuota pagarCuotaConComprobante(Long cuotaId, MultipartFile comprobante) throws IOException {
-        // 1. Validar y encontrar la cuota
-        Cuota cuota = cuotaRepository.findById(cuotaId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cuota no encontrada con id: " + cuotaId));
-
-        // 2. Guardar el archivo del comprobante
+        // Paso 1: Guardar el archivo del comprobante
         if (comprobante != null && !comprobante.isEmpty()) {
             Path uploadPath = Paths.get(UPLOAD_DIR);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
-
-            String fileName = "comprobante-" + cuota.getId() + "-" + comprobante.getOriginalFilename();
+            String fileName = "comprobante-" + cuotaId + "-" + comprobante.getOriginalFilename();
             Path filePath = uploadPath.resolve(fileName);
             Files.copy(comprobante.getInputStream(), filePath);
-
-            // Aquí podrías guardar la ruta del archivo (filePath.toString()) en la entidad Cuota si quieres
         }
 
-        // 3. Marcar la cuota como pagada
+        // Paso 2: Marcar la cuota como pagada
+        return marcarCuotaComoPagada(cuotaId);
+    }
+
+    /**
+     * Procesa un pago online (como Mercado Pago) donde no hay archivo.
+     */
+    @Transactional
+    public Cuota pagarCuotaOnline(Long cuotaId) {
+        return marcarCuotaComoPagada(cuotaId);
+    }
+
+    /**
+     * Lógica central para marcar una cuota como pagada y actualizar el estado del préstamo.
+     */
+    private Cuota marcarCuotaComoPagada(Long cuotaId) {
+        // 1. Validar y encontrar la cuota
+        Cuota cuota = cuotaRepository.findById(cuotaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cuota no encontrada con id: " + cuotaId));
+
+        // 2. Marcar la cuota como pagada
         cuota.setPagada(true);
         Cuota cuotaPagada = cuotaRepository.save(cuota);
 
-        // 4. Verificar si el préstamo está completamente pagado
-        verificarYActualizarEstadoPrestamo(cuota.getPrestamo().getId());
+        // 3. Verificar si el préstamo está completamente pagado
+        verificarYActualizarEstadoPrestamo(cuota.getPrestamo());
 
         return cuotaPagada;
     }
 
-    private void verificarYActualizarEstadoPrestamo(Long prestamoId) {
-        Prestamo prestamo = prestamoRepository.findById(prestamoId).get(); // El préstamo debe existir
-        List<Cuota> cuotasNoPagadas = cuotaRepository.findByPrestamoAndPagada(prestamo, false);
+    /**
+     * Verifica todas las cuotas de un préstamo y lo marca como 'pagado' si corresponde.
+     */
+    private void verificarYActualizarEstadoPrestamo(Prestamo prestamo) {
+        // Usamos un método de conteo del repositorio para más eficiencia
+        long cuotasNoPagadas = cuotaRepository.countByPrestamoAndPagada(prestamo, false);
 
-        if (cuotasNoPagadas.isEmpty()) {
+        if (cuotasNoPagadas == 0) {
             prestamo.setPagado(true);
             prestamoRepository.save(prestamo);
         }
