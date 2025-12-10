@@ -1,6 +1,7 @@
 package com.academiabaile.back.service;
 
 import com.academiabaile.back.entidades.Cuota;
+import com.academiabaile.back.entidades.Pago;
 import com.academiabaile.back.entidades.Prestamo;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -9,6 +10,7 @@ import com.itextpdf.layout.element.Paragraph;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -28,18 +30,40 @@ public class PdfService {
         document.add(new Paragraph("Estado de Cuenta"));
         document.add(new Paragraph("Cliente: " + prestamo.getCliente().getNombre()));
         document.add(new Paragraph("Descripción: " + prestamo.getDescripcion()));
-        document.add(new Paragraph("Monto: " + prestamo.getMonto()));
+        document.add(new Paragraph("Monto del Préstamo: " + prestamo.getMonto()));
         document.add(new Paragraph("Interés: " + prestamo.getInteres()));
         document.add(new Paragraph("Meses: " + prestamo.getMeses()));
-        document.add(new Paragraph("Deuda Total: " + deudaTotal));
+        document.add(new Paragraph("Deuda Total Pendiente: " + deudaTotal));
 
-        document.add(new Paragraph("\nCuotas:"));
+        document.add(new Paragraph("\n--- Detalle de Cuotas ---"));
         for (Cuota cuota : cuotas) {
-            document.add(new Paragraph("Número de Cuota: " + cuota.getNumeroCuota()));
-            document.add(new Paragraph("Fecha de Pago: " + cuota.getFechaPago()));
-            document.add(new Paragraph("Monto: " + cuota.getMonto()));
-            document.add(new Paragraph("Pagada: " + (cuota.isPagada() ? "Sí" : "No")));
-            document.add(new Paragraph("\n"));
+            String estado = cuota.isPagada() ? "Pagada" : "Pendiente";
+            document.add(new Paragraph(
+                "Cuota #" + cuota.getNumeroCuota() +
+                " | Vence: " + new SimpleDateFormat("dd-MM-yyyy").format(cuota.getFechaPago()) +
+                " | Monto: " + cuota.getMonto() +
+                " | Estado: " + estado
+            ));
+        }
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    public byte[] generarComprobante(Pago pago) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf);
+
+        document.add(new Paragraph("Comprobante de Pago"));
+        document.add(new Paragraph("ID de Pago: " + pago.getId()));
+        document.add(new Paragraph("Fecha: " + new SimpleDateFormat("dd-MM-yyyy HH:mm").format(pago.getFecha())));
+        document.add(new Paragraph("Monto Pagado: " + pago.getMonto()));
+
+        if (pago.getPrestamo() != null && pago.getPrestamo().getCliente() != null) {
+            document.add(new Paragraph("Cliente: " + pago.getPrestamo().getCliente().getNombre() + " " + pago.getPrestamo().getCliente().getApellido()));
+            document.add(new Paragraph("Préstamo ID: " + pago.getPrestamo().getId()));
         }
 
         document.close();
