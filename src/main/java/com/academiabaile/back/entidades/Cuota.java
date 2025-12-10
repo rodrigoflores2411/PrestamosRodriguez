@@ -1,5 +1,6 @@
 package com.academiabaile.back.entidades;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import java.util.Date;
 
 import jakarta.persistence.Entity;
@@ -16,6 +17,7 @@ public class Cuota {
     private Long id;
 
     @ManyToOne
+    @JsonBackReference
     private Prestamo prestamo;
 
     private int numeroCuota;

@@ -1,16 +1,20 @@
 package com.academiabaile.back.service;
 
+import com.academiabaile.back.dto.PrestamoRequestDTO;
+import com.academiabaile.back.entidades.Cliente;
 import com.academiabaile.back.entidades.Cuota;
 import com.academiabaile.back.entidades.Prestamo;
+import com.academiabaile.back.exception.ResourceNotFoundException;
+import com.academiabaile.back.repository.ClienteRepository;
 import com.academiabaile.back.repository.CuotaRepository;
 import com.academiabaile.back.repository.PrestamoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PrestamoService {
@@ -19,48 +23,49 @@ public class PrestamoService {
     private PrestamoRepository prestamoRepository;
 
     @Autowired
+    private ClienteRepository clienteRepository;
+
+    @Autowired
     private CuotaRepository cuotaRepository;
 
-    public Prestamo registrarPrestamo(Prestamo prestamo) {
+    @Transactional
+    public Prestamo registrarPrestamo(PrestamoRequestDTO prestamoRequest) {
+        Cliente cliente = clienteRepository.findById(prestamoRequest.getClienteId())
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con id: " + prestamoRequest.getClienteId()));
+
+        Prestamo prestamo = new Prestamo();
+        prestamo.setCliente(cliente);
+        prestamo.setMonto(prestamoRequest.getMonto());
+        prestamo.setNumeroCuotas(prestamoRequest.getNumeroCuotas());
+        prestamo.setFechaInicio(prestamoRequest.getFechaInicio());
+        prestamo.setPagado(false);
+
         Prestamo nuevoPrestamo = prestamoRepository.save(prestamo);
-        generarCuotas(nuevoPrestamo);
-        return nuevoPrestamo;
-    }
 
-    private void generarCuotas(Prestamo prestamo) {
-        double montoCuota = (prestamo.getMonto() * (1 + prestamo.getInteres())) / prestamo.getMeses();
+        double montoCuota = prestamo.getMonto() / prestamo.getNumeroCuotas();
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(prestamo.getFechaEmision());
+        calendar.setTime(prestamo.getFechaInicio());
 
-        List<Cuota> cuotas = new ArrayList<>();
-        for (int i = 1; i <= prestamo.getMeses(); i++) {
-            calendar.add(Calendar.MONTH, 1);
+        for (int i = 1; i <= prestamo.getNumeroCuotas(); i++) {
             Cuota cuota = new Cuota();
-            cuota.setPrestamo(prestamo);
+            cuota.setPrestamo(nuevoPrestamo);
             cuota.setNumeroCuota(i);
-            cuota.setFechaPago(calendar.getTime());
             cuota.setMonto(montoCuota);
+            cuota.setFechaPago(calendar.getTime());
             cuota.setPagada(false);
-            cuotas.add(cuota);
-        }
-        cuotaRepository.saveAll(cuotas);
-    }
+            cuotaRepository.save(cuota);
 
-    public void actualizarIntereses() {
-        List<Cuota> cuotas = cuotaRepository.findByPagadaIsFalseAndFechaPagoBefore(new Date());
-        for (Cuota cuota : cuotas) {
-            long diasDeAtraso = (new Date().getTime() - cuota.getFechaPago().getTime()) / (1000 * 60 * 60 * 24);
-            int mesesDeAtraso = (int) (diasDeAtraso / 30);
-
-            if (mesesDeAtraso > 0) {
-                double interesAcumulativo = Math.pow(1.01, mesesDeAtraso);
-                cuota.setMonto(cuota.getMonto() * interesAcumulativo);
-                cuotaRepository.save(cuota);
-            }
+            calendar.add(Calendar.MONTH, 1);
         }
+
+        return nuevoPrestamo;
     }
 
     public List<Prestamo> obtenerPrestamos() {
         return prestamoRepository.findAll();
+    }
+
+    public Optional<Prestamo> obtenerPrestamoPorId(Long id) {
+        return prestamoRepository.findById(id);
     }
 }

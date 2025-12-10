@@ -1,5 +1,6 @@
 package com.academiabaile.back.entidades;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import java.util.Date;
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class Prestamo {
     private boolean pagado;
 
     @OneToMany(mappedBy = "prestamo", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<Cuota> cuotas;
 
     // Getters y Setters
