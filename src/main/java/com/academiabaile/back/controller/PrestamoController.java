@@ -1,6 +1,6 @@
 package com.academiabaile.back.controller;
 
-import com.academiabaile.back.model.Prestamo;
+import com.academiabaile.back.entidades.Prestamo;
 import com.academiabaile.back.service.CalculoDeudaService;
 import com.academiabaile.back.service.PdfService;
 import com.academiabaile.back.service.PrestamoService;

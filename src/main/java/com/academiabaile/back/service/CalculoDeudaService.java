@@ -1,6 +1,6 @@
 package com.academiabaile.back.service;
 
-import com.academiabaile.back.model.Prestamo;
+import com.academiabaile.back.entidades.Prestamo;
 import com.academiabaile.back.repository.PrestamoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
