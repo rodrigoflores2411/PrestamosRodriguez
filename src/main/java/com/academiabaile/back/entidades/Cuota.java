@@ -7,15 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 public class Cuota {
 
@@ -33,4 +25,54 @@ public class Cuota {
     private Double monto;
 
     private boolean pagada;
+
+    // Getters y Setters
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Prestamo getPrestamo() {
+        return prestamo;
+    }
+
+    public void setPrestamo(Prestamo prestamo) {
+        this.prestamo = prestamo;
+    }
+
+    public int getNumeroCuota() {
+        return numeroCuota;
+    }
+
+    public void setNumeroCuota(int numeroCuota) {
+        this.numeroCuota = numeroCuota;
+    }
+
+    public Date getFechaPago() {
+        return fechaPago;
+    }
+
+    public void setFechaPago(Date fechaPago) {
+        this.fechaPago = fechaPago;
+    }
+
+    public Double getMonto() {
+        return monto;
+    }
+
+    public void setMonto(Double monto) {
+        this.monto = monto;
+    }
+
+    public boolean isPagada() {
+        return pagada;
+    }
+
+    public void setPagada(boolean pagada) {
+        this.pagada = pagada;
+    }
 }
