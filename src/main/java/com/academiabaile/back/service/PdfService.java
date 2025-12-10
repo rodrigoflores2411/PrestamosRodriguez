@@ -3,10 +3,10 @@ package com.academiabaile.back.service;
 import com.academiabaile.back.entidades.Pago;
 import com.academiabaile.back.entidades.Prestamo;
 import com.academiabaile.back.repository.PrestamoRepository;
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
-import com.itextpdf.kernel.font.StandardFonts;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -109,7 +109,7 @@ public class PdfService {
             Cell clientCell = new Cell();
             clientCell.add(new Paragraph("Cliente:").setBold());
             clientCell.add(new Paragraph(prestamo.getCliente().getNombre()));
-            clientCell.add(new Paragraph(prestamo.getCliente().getEmail()));
+            // Eliminada la línea que intentaba acceder a un email inexistente.
             clientCell.setBorder(Border.NO_BORDER);
             header.addCell(clientCell);
 
@@ -161,6 +161,7 @@ public class PdfService {
         box.setWidth(UnitValue.createPercentValue(100));
         box.setBorder(new SolidBorder(ColorConstants.BLACK, 1));
 
+        // CORRECTO: Usar la fuente correcta de iText 7
         PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
 
         Paragraph rucParagraph = new Paragraph("RUC: " + RUC_EMPRESA)
