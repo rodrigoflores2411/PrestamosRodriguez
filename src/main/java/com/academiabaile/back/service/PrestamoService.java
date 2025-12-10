@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +54,7 @@ public class PrestamoService {
         // 5. Generar y Guardar Cuotas
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(prestamo.getFechaEmision());
-
+        List<Cuota> cuotas = new ArrayList<>();
         for (int i = 1; i <= prestamo.getMeses(); i++) {
             calendar.add(Calendar.MONTH, 1);
             Cuota cuota = new Cuota();
@@ -62,8 +63,10 @@ public class PrestamoService {
             cuota.setMonto(montoCuota);
             cuota.setFechaPago(calendar.getTime());
             cuota.setPagada(false);
-            cuotaRepository.save(cuota);
+            cuotas.add(cuotaRepository.save(cuota));
         }
+        
+        nuevoPrestamo.setCuotas(cuotas);
 
         // 6. Devolver Préstamo (con cuotas asociadas por la transacción)
         return nuevoPrestamo;
