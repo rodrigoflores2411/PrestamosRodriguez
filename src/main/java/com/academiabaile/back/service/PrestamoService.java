@@ -30,23 +30,32 @@ public class PrestamoService {
 
     @Transactional
     public Prestamo registrarPrestamo(PrestamoRequestDTO prestamoRequest) {
+        // 1. Buscar Cliente
         Cliente cliente = clienteRepository.findById(prestamoRequest.getClienteId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado con id: " + prestamoRequest.getClienteId()));
 
+        // 2. Crear y Guardar Préstamo
         Prestamo prestamo = new Prestamo();
         prestamo.setCliente(cliente);
+        prestamo.setDescripcion(prestamoRequest.getDescripcion());
+        prestamo.setFechaEmision(prestamoRequest.getFechaEmision());
         prestamo.setMonto(prestamoRequest.getMonto());
-        prestamo.setNumeroCuotas(prestamoRequest.getNumeroCuotas());
-        prestamo.setFechaInicio(prestamoRequest.getFechaInicio());
+        prestamo.setInteres(prestamoRequest.getInteres());
+        prestamo.setMeses(prestamoRequest.getMeses());
         prestamo.setPagado(false);
 
         Prestamo nuevoPrestamo = prestamoRepository.save(prestamo);
 
-        double montoCuota = prestamo.getMonto() / prestamo.getNumeroCuotas();
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(prestamo.getFechaInicio());
+        // 3. Calcular Monto Total y 4. Monto de Cuota
+        double montoTotalConInteres = prestamo.getMonto() * (1 + prestamo.getInteres() / 100);
+        double montoCuota = montoTotalConInteres / prestamo.getMeses();
 
-        for (int i = 1; i <= prestamo.getNumeroCuotas(); i++) {
+        // 5. Generar y Guardar Cuotas
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(prestamo.getFechaEmision());
+
+        for (int i = 1; i <= prestamo.getMeses(); i++) {
+            calendar.add(Calendar.MONTH, 1);
             Cuota cuota = new Cuota();
             cuota.setPrestamo(nuevoPrestamo);
             cuota.setNumeroCuota(i);
@@ -54,10 +63,9 @@ public class PrestamoService {
             cuota.setFechaPago(calendar.getTime());
             cuota.setPagada(false);
             cuotaRepository.save(cuota);
-
-            calendar.add(Calendar.MONTH, 1);
         }
 
+        // 6. Devolver Préstamo (con cuotas asociadas por la transacción)
         return nuevoPrestamo;
     }
 

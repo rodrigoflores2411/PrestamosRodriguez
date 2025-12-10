@@ -4,9 +4,11 @@ import java.util.Date;
 
 public class PrestamoRequestDTO {
     private Long clienteId;
+    private String descripcion;
+    private Date fechaEmision;
     private double monto;
-    private int numeroCuotas;
-    private Date fechaInicio;
+    private double interes;
+    private int meses;
 
     // Getters y Setters
     public Long getClienteId() {
@@ -17,6 +19,22 @@ public class PrestamoRequestDTO {
         this.clienteId = clienteId;
     }
 
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
+    public Date getFechaEmision() {
+        return fechaEmision;
+    }
+
+    public void setFechaEmision(Date fechaEmision) {
+        this.fechaEmision = fechaEmision;
+    }
+
     public double getMonto() {
         return monto;
     }
@@ -25,19 +43,19 @@ public class PrestamoRequestDTO {
         this.monto = monto;
     }
 
-    public int getNumeroCuotas() {
-        return numeroCuotas;
+    public double getInteres() {
+        return interes;
     }
 
-    public void setNumeroCuotas(int numeroCuotas) {
-        this.numeroCuotas = numeroCuotas;
+    public void setInteres(double interes) {
+        this.interes = interes;
     }
 
-    public Date getFechaInicio() {
-        return fechaInicio;
+    public int getMeses() {
+        return meses;
     }
 
-    public void setFechaInicio(Date fechaInicio) {
-        this.fechaInicio = fechaInicio;
+    public void setMeses(int meses) {
+        this.meses = meses;
     }
 }
