@@ -4,7 +4,8 @@ import com.academiabaile.back.dto.MercadoPagoInitPointDTO;
 import com.academiabaile.back.entidades.Cuota;
 import com.academiabaile.back.service.MercadoPagoService;
 import com.academiabaile.back.service.PagoService;
-import com.mercadopago.client.preference.Preference;
+// Import corregido para la clase Preference
+import com.mercadopago.resources.preference.Preference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +64,7 @@ public class PagoController {
     }
 
     // Callback de PAGO PENDIENTE de Mercado Pago
-    @GetMapping("/mercadopago/pending")
+    @GetMapping("mercadopago/pending")
     public RedirectView pagoPendiente(@RequestParam("cuota_id") Long cuotaId) {
         return new RedirectView("http://localhost:4200/pago-pendiente");
     }

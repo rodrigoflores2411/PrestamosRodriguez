@@ -1,4 +1,3 @@
-
 package com.academiabaile.back.service;
 
 import com.academiabaile.back.entidades.Cuota;
@@ -8,6 +7,8 @@ import com.mercadopago.MercadoPagoConfig;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
+// Import corregido para la clase Preference
+import com.mercadopago.resources.preference.Preference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
